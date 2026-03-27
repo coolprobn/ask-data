@@ -1,0 +1,70 @@
+# Ask Data — build log (blog)
+
+Technical notes from implementing [ask-data-plan.md](./ask-data-plan.md). Newest entries first.
+
+### Continuing to the next ticket
+
+After each completed ticket, the implementer will state **what’s next** (per the plan’s dependency order) and how to verify. To move on, send a short message such as:
+
+- **“Continue with the next ticket”** or **“Implement Ticket 0.2”** (replace with the ID named in the last summary).
+
+That keeps scope clear and matches the “stop after each ticket” loop.
+
+---
+
+## Ticket 0.1 — Column allow/deny: one config, two surfaces
+
+**2025-03-27**
+
+Ask Data will send a **schema snapshot** to a local LLM and show **tabular query results** in the browser. Both are trust boundaries: you do not want internal memos, token digests, or password-ish column names in either place. Ticket 0.1 fixes that at the source with a single YAML file and a small Ruby API—before any SQL generation or execution exists.
+
+### The problem in one sentence
+
+If the model never *sees* a sensitive column and the UI never *renders* it, you have halved the accidental leak surface for a teaching demo.
+
+### What we shipped
+
+1. **`config/nl_query.yml`**  
+   - **`allowed_tables`:** the mini-shop tables the NL feature is allowed to reason about (`categories`, `products`, `customers`, `orders`, `order_items`). Anything else is treated as off-limits.  
+   - **`forbidden_column_patterns`:** Ruby regexp *sources* matched against **column names only**—e.g. things starting with `password` or `encrypted_`, or ending with `_digest`.  
+   - **`explicit_forbidden_columns`:** per-table denials for columns that are not caught by a generic pattern. For the demo domain we block `customers.internal_memo` and `customers.api_token_digest` so a future migration can add them without forgetting to hide them.
+
+   Rails loads this via `Rails.application.config_for(:nl_query)` with the usual `default` / per-environment YAML merge, so changing exposure is a config edit plus deploy (or restart in dev).
+
+2. **`NlQuery::Exposure`** (`app/services/nl_query/exposure.rb`)  
+   One module answers: “Is this table in scope?” and “Is this column safe to expose?” It exposes helpers for:
+   - **LLM-facing text:** `filter_columns_for_llm`, `llm_schema_lines_for_table` — forbidden columns are **omitted**, not redacted in place, so the model’s world matches your policy.  
+   - **Result rows:** `redact_result_row` — drops keys that fail the same checks (for when execution returns a hash-like row keyed by column name).
+
+   There is a **`reload!`** for tests or consoles that need to pick up config changes without a full process restart.
+
+3. **Tests** (`test/services/nl_query/exposure_test.rb`)  
+   Unit tests assert that explicit forbids, pattern forbids, LLM line joining, row redaction, and unknown tables all behave as expected—no database fixtures required.
+
+4. **README**  
+   A short “NL query exposure” section points readers at the YAML and `NlQuery::Exposure` so the repo stays navigable without rereading the full plan.
+
+### Design choice worth naming
+
+**Patterns operate on column names, not cell values.** That keeps the rule set small and fast. Row-level redaction for *values* is a different product (PII in a “safe” column); v1 stays at name-based exposure.
+
+### How to verify locally
+
+```bash
+bin/rails test test/services/nl_query/exposure_test.rb
+```
+
+Optional sanity check:
+
+```bash
+bin/rails runner 'p NlQuery::Exposure.filter_columns_for_llm("customers", %w[email internal_memo])'
+# => ["email"]
+```
+
+### What comes next (per plan)
+
+Ticket **0.2** wires **ruby_llm** + Ollama with env-based config and a stubbable prompt wrapper so CI never depends on `localhost:11434`. This exposure layer will plug into the schema snapshot builder in Epic 2 and result rendering in Epic 4.
+
+---
+
+*End of entry — Ticket 0.1*

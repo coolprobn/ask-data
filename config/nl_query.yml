@@ -1,0 +1,33 @@
+# Natural-language query exposure: allowed tables and columns the LLM may use.
+# Forbidden columns must never appear in schema text shown to the model or in query results.
+# See README "NL query exposure" and NlQuery::Exposure.
+
+default: &default
+  allowed_tables:
+    - categories
+    - products
+    - customers
+    - orders
+    - order_items
+  # Ruby Regexp source strings (matched against column names only).
+  forbidden_column_patterns:
+    - "\\Apassword"
+    - "\\Aencrypted_"
+    - "_digest\\z"
+    - "\\Asecret"
+    - "\\Aapi_key"
+    - "\\Atoken\\z"
+  # Per-table denials (column names) in addition to pattern matches.
+  explicit_forbidden_columns:
+    customers:
+      - internal_memo
+      - api_token_digest
+
+development:
+  <<: *default
+
+test:
+  <<: *default
+
+production:
+  <<: *default
