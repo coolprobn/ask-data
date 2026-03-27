@@ -28,6 +28,13 @@ Implementation notes (blog-style, updated as we build): [`docs/blog.md`](docs/bl
   - **225** order line items (1–5 lines per order; **SEED-007** appears on more than one order)  
   - **Whale** customer `whale@seed.example.com`: **38** orders with slightly marked-up line prices for high `total_cents` totals.
 
+## Product policy & safe errors (Ticket 0.4)
+
+- **In-app:** **`/`** and **`/ask`** render the Ask placeholder (`QuestionsController#ask`); **`/policy`** is the “what this can do” page (`StaticPagesController#policy`). The full ticket text is **`docs/ask-data-plan.md`** (section **Ticket 0.4**).
+- **Pipeline:** `NlQuery::NaturalLanguageQuery` runs **ambiguity hints** → `NlQuery::TextToSqlClient` (prompts require SELECT-only, no invented columns, clarify or omit SQL when needed) → **`NlQuery::SqlGuard`** (minimal read-only gate: no DDL/DML keywords, single statement, `WITH`/`SELECT` only).
+- **User-visible strings** live in `NlQuery::ProductPolicy::MESSAGES`; **`NlQuery::QueryResult#user_safe_payload`** omits SQL and internals for UI layers.
+- **Suggested questions** for clarification UX: `NlQuery::ProductPolicy::SUGGESTED_QUESTIONS` (keep in sync with README / Epic 6 golden list when you add it).
+
 ## Ruby version
 
 See `.ruby-version`.

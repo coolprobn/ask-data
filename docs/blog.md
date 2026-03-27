@@ -6,9 +6,27 @@ Technical notes from implementing [ask-data-plan.md](./ask-data-plan.md). Newest
 
 After each completed ticket, the implementer will state **what’s next** (per the plan’s dependency order) and how to verify. To move on, send a short message such as:
 
-- **“Continue with the next ticket”** or **“Implement Ticket 0.4”** (replace with the ID named in the last summary).
+- **“Continue with the next ticket”** or **“Implement Ticket 1.1”** (replace with the ID named in the last summary).
 
 That keeps scope clear and matches the “stop after each ticket” loop.
+
+---
+
+## Ticket 0.4 — Product policy: prompts, safe errors, minimal guard
+
+**2025-03-27**
+
+Ticket 0.4 makes the “honest limitations” and “product policy” from the plan **real code**, not README-only prose. **`NlQuery::ProductPolicy`** holds user-facing copy, suggested NL questions for the clarification path, and a simple **`ambiguous?`** heuristic (very short or too-few-word questions get **clarification** with deterministic suggestions, not a risky LLM guess). **`NlQuery::SqlGuard`** is a minimal **read-only** gate: no `INSERT`/`UPDATE`/etc., no multi-statement `;`, and the statement must start as **`WITH`** or **`SELECT`**. Epic 3 will replace this with a fuller parser + allowlist walk.
+
+**`NlQuery::NaturalLanguageQuery`** ties it together: ambiguity → optional early exit; otherwise NL→SQL; empty SQL → **schema gap** message; failing guard → **guard rejected** without echoing the bad SQL; **`LlMUnavailableError`** → a short connectivity message (no stack traces). **`NlQuery::QueryResult`** exposes **`user_safe_payload`** for future controllers so the UI never gets raw SQL on error paths.
+
+**Prompts:** `TextToSqlClient::SYSTEM_PROMPT` now explicitly tells the model not to invent columns, to **clarify** when underspecified, and to **omit SQL** when the schema cannot support the question.
+
+**In-app:** **`/`** and **`/ask`** serve **`QuestionsController#ask`** (placeholder Ask UI); **`/policy`** is **`StaticPagesController#policy`** (ERB for now; Slim arrives in Ticket 1.1). Policy points at `docs/ask-data-plan.md`.
+
+**Verification:** `bin/rails test` covers SqlGuard, NL pipeline with **stubbed** bad SQL (asserts no `INSERT` in user copy), schema gap, and LLM-unavailable mapping. Integration tests cover **`GET /policy`**, **`GET /`**, and **`GET /ask`** separately.
+
+**Next:** Epic **1** — **Ticket 1.1** Rails shell + Slim + Tailwind UI (Ask + browse).
 
 ---
 
@@ -21,8 +39,6 @@ This ticket adds the **locked** e-commerce demo from the plan: one migration cre
 **Seeds** live in **`db/seeds/mini_shop.rb`** and are loaded from **`db/seeds.rb`**. The script is fully deterministic: fixed category names, `SEED-001`…`SEED-042` SKUs, and a scripted split of products across categories (8×4 + 2×5 = **42** products). The last two SKUs are never attached to an order. **Whale Wholesale LLC** (`whale@seed.example.com`) takes **38** orders with a 10% line-price bump so aggregates and `ORDER BY` demos have a clear outlier. **Four** customers (`nosale01`…`nosale04`) never receive orders. **75** orders use a fixed status array (enough **cancelled** and **pending** rows for filter examples). **55** orders sit in the 2024–2025 range; **20** are scheduled from **2025-12-11** onward so “after 10 December 2025”–style questions have plenty of rows. **SEED-007** is duplicated across two orders to exercise join semantics.
 
 **Verification:** `bin/rails db:reset` (or test DB migrate + seed) completes cleanly; README documents the final counts; **`bin/rails test`** includes light model tests for associations and status validation.
-
-**Next:** Ticket **0.4** — product policy in prompts + safe errors (clarification, no SQL leakage to users) and tests for stubbed bad SQL paths.
 
 ---
 
