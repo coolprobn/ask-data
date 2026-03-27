@@ -66,3 +66,6 @@ group :test do
   gem "capybara"
   gem "selenium-webdriver"
 end
+
+# NL → SQL via Ollama
+gem "ruby_llm", "~> 1.14"

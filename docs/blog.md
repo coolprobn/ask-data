@@ -12,6 +12,26 @@ That keeps scope clear and matches the “stop after each ticket” loop.
 
 ---
 
+## Ticket 0.2 — RubyLLM + Ollama: config, wrapper, stubbable tests
+
+**2025-03-27**
+
+Ticket 0.2 wires the **ruby_llm** gem to a local **Ollama** instance using the same env vars we document for readers: **`OLLAMA_BASE_URL`** (defaults to `http://127.0.0.1:11434`) and **`OLLAMA_MODEL`** (defaults to `qwen2.5-coder:7b`). RubyLLM’s docs expect an OpenAI-compatible base URL ending in **`/v1`**, so **`NlQuery::OllamaEnv.normalize_ollama_openai_base`** appends `/v1` when it’s missing—no manual `/v1` in env unless you want to be explicit.
+
+**Initializer:** `config/initializers/ruby_llm.rb` calls `RubyLLM.configure` with `ollama_api_base`, optional `ollama_api_key` (for authenticated remote Ollama only), `default_model`, Rails logger, and a configurable request timeout (`RUBYLLM_REQUEST_TIMEOUT`, default 300s).
+
+**Thin wrappers:**
+
+- **`NlQuery::OllamaChatCompletion`** — one place that builds `RubyLLM.chat(..., provider: :ollama, assume_model_exists: true)`, sets instructions, and `ask`s the user payload. Network and RubyLLM API failures are mapped to **`NlQuery::LlmUnavailableError`** so callers (and later the orchestrator) can show a safe message.
+- **`NlQuery::TextToSqlClient`** — owns the NL→SQL **system prompt** (SELECT-only, schema-bound; fuller Ticket 0.4 policy lands in Epic 4) and the user message shape (`Schema:` / `Question:`). It takes **`completion:`** in the constructor so tests inject a stub object that responds to `complete(system:, user:)`—**no Ollama process required in CI**.
+- **`NlQuery::ModelReplyParser`** — extracts SQL from ```sql fences (with a small fallback for a bare `SELECT` / `WITH` line).
+
+**Verification:** `bin/rails test` covers URL normalization, parsing, and the client with a fake completion. **`bin/rails zeitwerk:check`** should stay green.
+
+**Next:** Ticket **0.3** — Postgres migrations + deterministic mini-shop seeds (`db:reset`).
+
+---
+
 ## Ticket 0.1 — Column allow/deny: one config, two surfaces
 
 **2025-03-27**
