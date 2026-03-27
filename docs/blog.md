@@ -6,9 +6,21 @@ Technical notes from implementing [ask-data-plan.md](./ask-data-plan.md). Newest
 
 After each completed ticket, the implementer will state **what’s next** (per the plan’s dependency order) and how to verify. To move on, send a short message such as:
 
-- **“Continue with the next ticket”** or **“Implement Ticket 1.2”** (replace with the ID named in the last summary).
+- **“Continue with the next ticket”** or **“Implement Ticket 1.3”** (replace with the ID named in the last summary).
 
 That keeps scope clear and matches the “stop after each ticket” loop.
+
+---
+
+## Ticket 1.2 — No authentication (by design)
+
+**2025-03-27**
+
+v1 intentionally has **no login**: no Devise, OAuth, HTTP Basic, or session gates on Ask or static pages. The **Gemfile** stays free of auth gems; **`bcrypt`** remains commented with a note. **Routes** have no `/login` or session resources. Read-only SQL guards are about **data writes**, not about who can open the UI—README now has a **prominent warning** that exposing the app to the internet without auth/hardening is unsafe.
+
+**Verification:** repo review + README; no “unauthorized” tests added (they would fight the product goal).
+
+**Next:** Ticket **1.3** — Ask UI with suggested questions, verification hints, and DRY example strings.
 
 ---
 
@@ -21,8 +33,6 @@ The app already used **tailwindcss-rails**; this ticket adds **`slim-rails`** an
 **Tailwind** is still driven from `app/assets/tailwind/application.css` (`@import "tailwindcss"`); Slim markup uses the same utility classes (`container`, `max-w-3xl`, `text-gray-700`, etc.). Policy copy uses `raw(...)` for static HTML fragments (`<strong>`, `<code>`) to match the previous ERB output without fighting Slim’s inline-tag rules.
 
 **Verification:** `bin/rails test` and `bin/rails zeitwerk:check` — green. Browse/index tables are **Ticket 1.4**, not this ticket.
-
-**Next:** Ticket **1.2** — no authentication (by design) + README warning about exposing the app on the public internet.
 
 ---
 

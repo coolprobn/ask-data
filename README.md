@@ -4,6 +4,12 @@ Natural-language → read-only SQL against PostgreSQL (Rails + Ollama). See `doc
 
 Implementation notes (blog-style, updated as we build): [`docs/blog.md`](docs/blog.md).
 
+## Security warning — no authentication (Ticket 1.2)
+
+**This app ships without authentication** (no Devise, sessions, HTTP Basic, or API tokens for the UI). That keeps the learning and localhost demo path minimal.
+
+**Do not expose this stack to the public internet as-is.** Anyone who can reach the web UI can run the natural-language query flow against your machine’s Postgres and Ollama. **Read-only SQL validation protects the database from writes**, but it does **not** protect you from **unauthorized use** of the app, resource exhaustion, or abuse of your Ollama endpoint. If you ever deploy beyond a trusted network, add **authentication, rate limiting, and operational hardening** (see Phase 2 in the plan) or keep access private (VPN, SSH tunnel, etc.).
+
 ## NL query exposure (Ticket 0.1)
 
 - **Single source of truth:** `config/nl_query.yml` defines which **tables** may be used in NL queries and which **columns** are forbidden (patterns + per-table list).
@@ -40,6 +46,12 @@ Implementation notes (blog-style, updated as we build): [`docs/blog.md`](docs/bl
 - **Templates:** [`slim-rails`](https://github.com/slim-template/slim-rails) is in the Gemfile. App layout and feature screens use **`.html.slim`** (`app/views/layouts/application.html.slim`, `questions/`, `static_pages/`). Mailer layouts remain **ERB** under `app/views/layouts/mailer*`; PWA stubs may stay **ERB** as generated.
 - **CSS:** [tailwindcss-rails](https://github.com/rails/tailwindcss-rails) — `app/assets/tailwind/application.css` imports Tailwind; use utility classes in Slim (`class="..."` / `.class` chains). Run `bin/dev` or `bin/rails tailwindcss:watch` in development so CSS rebuilds.
 - **Browse pages** (tables for customers/products/orders) land in **Ticket 1.4**; this ticket only converts the shell and current Ask/policy pages.
+
+## No authentication by design (Ticket 1.2)
+
+- **Gemfile:** no `devise`, OAuth, JWT, or similar auth gems for the web app (`bcrypt` remains commented unless you add it for something else).
+- **Routes:** no `/login`, `/sessions`, or OAuth callbacks. **No tests** assert `401 Unauthorized` for the Ask or browse flows—that would be the wrong goal for v1.
+- **Reminder:** read the **Security warning** section at the top of this README before exposing the app to a network.
 
 ## Ruby version
 
