@@ -12,6 +12,20 @@ That keeps scope clear and matches the “stop after each ticket” loop.
 
 ---
 
+## Ticket 3.1 — Parser-based SELECT-only gate (`pg_query`)
+
+**2025-03-27**
+
+**`NlQuery::SqlGuard`** now uses **`pg_query`** (real PostgreSQL parser) instead of regex/`;` heuristics: **one** top-level statement, must be **`select_stmt`** (covers **`WITH … SELECT`**). **INSERT/UPDATE/DELETE/DDL/COPY/TRUNCATE**, **`BEGIN`/`COMMIT`**, **`EXPLAIN`**, etc. resolve to **`not_select`**. Multiple statements → **`multi_statement`**. **`PgQuery::ParseError`** → **`parse_error`** (user copy via existing guard-rejected path). **Gem:** `pg_query` (~> 6.2).
+
+**Tests:** `sql_guard_test.rb` covers destructive and multi-statement strings plus invalid SQL.
+
+**Verification:** `bin/rails test`, `bundle install` (native extension).
+
+**Next:** Ticket **3.2** — AST walk / identifier allowlisting (and policy for `SELECT *`).
+
+---
+
 ## Tickets 2.2–2.3 — NL→SQL (RubyLLM) + prompts in code
 
 **2025-03-27**
@@ -22,7 +36,7 @@ That keeps scope clear and matches the “stop after each ticket” loop.
 
 **Verification:** `bin/rails test`, `bin/rails zeitwerk:check` — green.
 
-**Next:** Epic **3 / Ticket 3.1** — parser-based SELECT gate (replace minimal `SqlGuard`).
+**Next:** Epic **3 / Ticket 3.2** — identifier allowlisting on the parse tree.
 
 ---
 
@@ -82,7 +96,7 @@ The app already used **tailwindcss-rails**; this ticket adds **`slim-rails`** an
 
 **2025-03-27**
 
-Ticket 0.4 makes the “honest limitations” and “product policy” from the plan **real code**, not README-only prose. **`NlQuery::ProductPolicy`** holds user-facing copy, suggested NL questions for the clarification path, and a simple **`ambiguous?`** heuristic (very short or too-few-word questions get **clarification** with deterministic suggestions, not a risky LLM guess). **`NlQuery::SqlGuard`** is a minimal **read-only** gate: no `INSERT`/`UPDATE`/etc., no multi-statement `;`, and the statement must start as **`WITH`** or **`SELECT`**. Epic 3 will replace this with a fuller parser + allowlist walk.
+Ticket 0.4 makes the “honest limitations” and “product policy” from the plan **real code**, not README-only prose. **`NlQuery::ProductPolicy`** holds user-facing copy, suggested NL questions for the clarification path, and a simple **`ambiguous?`** heuristic (very short or too-few-word questions get **clarification** with deterministic suggestions, not a risky LLM guess). **`NlQuery::SqlGuard`** was originally a minimal regex gate; **Epic 3 / Ticket 3.1** replaces it with **`pg_query`** (PostgreSQL parser) + allowlist work continues in **3.2**.
 
 **`NlQuery::NaturalLanguageQuery`** ties it together: ambiguity → optional early exit; otherwise NL→SQL; empty SQL → **schema gap** message; failing guard → **guard rejected** without echoing the bad SQL; **`LlMUnavailableError`** → a short connectivity message (no stack traces). **`NlQuery::QueryResult`** exposes **`user_safe_payload`** for future controllers so the UI never gets raw SQL on error paths.
 

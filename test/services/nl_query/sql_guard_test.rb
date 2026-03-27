@@ -21,7 +21,55 @@ module NlQuery
     test "rejects INSERT" do
       v = SqlGuard.validate("INSERT INTO orders VALUES (1)")
       assert_not v.success
-      assert_equal :forbidden_keyword, v.reason
+      assert_equal :not_select, v.reason
+    end
+
+    test "rejects UPDATE" do
+      v = SqlGuard.validate("UPDATE orders SET status = 'paid' WHERE id = 1")
+      assert_not v.success
+      assert_equal :not_select, v.reason
+    end
+
+    test "rejects DELETE" do
+      v = SqlGuard.validate("DELETE FROM orders")
+      assert_not v.success
+      assert_equal :not_select, v.reason
+    end
+
+    test "rejects DROP" do
+      v = SqlGuard.validate("DROP TABLE orders")
+      assert_not v.success
+      assert_equal :not_select, v.reason
+    end
+
+    test "rejects CREATE" do
+      v = SqlGuard.validate("CREATE TABLE evil (id int)")
+      assert_not v.success
+      assert_equal :not_select, v.reason
+    end
+
+    test "rejects COPY" do
+      v = SqlGuard.validate("COPY orders FROM '/tmp/x'")
+      assert_not v.success
+      assert_equal :not_select, v.reason
+    end
+
+    test "rejects TRUNCATE" do
+      v = SqlGuard.validate("TRUNCATE orders")
+      assert_not v.success
+      assert_equal :not_select, v.reason
+    end
+
+    test "rejects transaction control" do
+      v = SqlGuard.validate("BEGIN")
+      assert_not v.success
+      assert_equal :not_select, v.reason
+    end
+
+    test "rejects EXPLAIN SELECT" do
+      v = SqlGuard.validate("EXPLAIN SELECT 1")
+      assert_not v.success
+      assert_equal :not_select, v.reason
     end
 
     test "rejects multi-statement" do
@@ -30,8 +78,26 @@ module NlQuery
       assert_equal :multi_statement, v.reason
     end
 
+    test "rejects multi-statement with second statement destructive" do
+      v = SqlGuard.validate("SELECT 1; DROP TABLE orders")
+      assert_not v.success
+      assert_equal :multi_statement, v.reason
+    end
+
+    test "rejects invalid SQL" do
+      v = SqlGuard.validate("SELECT FROM")
+      assert_not v.success
+      assert_equal :parse_error, v.reason
+    end
+
     test "rejects empty" do
       v = SqlGuard.validate("   ")
+      assert_not v.success
+      assert_equal :empty, v.reason
+    end
+
+    test "rejects comment-only input as empty" do
+      v = SqlGuard.validate("-- only a comment")
       assert_not v.success
       assert_equal :empty, v.reason
     end

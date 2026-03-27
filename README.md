@@ -48,7 +48,7 @@ Implementation notes (blog-style, updated as we build): [`docs/blog.md`](docs/bl
 ## Product policy & safe errors (Ticket 0.4)
 
 - **In-app:** **`/`** and **`GET /ask`** render the Ask form (`QuestionsController#ask`); **`POST /ask`** runs the NL pipeline (`QuestionsController#create`); **`/policy`** is the “what this can do” page (`StaticPagesController#policy`). The full ticket text is **`docs/ask-data-plan.md`** (section **Ticket 0.4**).
-- **Pipeline:** `NlQuery::NaturalLanguageQuery` runs **ambiguity hints** → `NlQuery::TextToSqlClient` (prompts require SELECT-only, no invented columns, clarify or omit SQL when needed) → **`NlQuery::SqlGuard`** (minimal read-only gate: no DDL/DML keywords, single statement, `WITH`/`SELECT` only).
+- **Pipeline:** `NlQuery::NaturalLanguageQuery` runs **ambiguity hints** → `NlQuery::TextToSqlClient` (prompts require SELECT-only, no invented columns, clarify or omit SQL when needed) → **`NlQuery::SqlGuard`** (PostgreSQL parser via **`pg_query`**: exactly one statement, top-level **`SelectStmt`** only — `WITH … SELECT` allowed; DDL/DML/transaction/`EXPLAIN` rejected; parse failures map to safe copy).
 - **User-visible strings** live in `NlQuery::ProductPolicy::MESSAGES`; **`NlQuery::QueryResult#user_safe_payload`** omits SQL and internals for UI layers.
 - **Suggested questions** for clarification UX: `NlQuery::ProductPolicy::SUGGESTED_QUESTIONS` (keep in sync with README / Epic 6 golden list when you add it).
 

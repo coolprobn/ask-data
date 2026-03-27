@@ -1,31 +1,37 @@
 # frozen_string_literal: true
 
-module NlQuery
-  # Minimal read-only gate (Epic 3 adds full parsing + allowlist walks).
-  class SqlGuard
-    FORBIDDEN_KEYWORDS = /
-      \b(INSERT|UPDATE|DELETE|DROP|ALTER|TRUNCATE|CREATE|GRANT|REVOKE|COPY|EXECUTE)\b
-    /ix
+require "pg_query"
 
+module NlQuery
+  # SELECT-only gate using PostgreSQL's parser (Ticket 3.1). Epic 3.2 adds identifier allowlists.
+  class SqlGuard
     Validation = Struct.new(:success, :reason, keyword_init: true)
 
     def self.validate(sql)
       s = sql.to_s.strip
       return Validation.new(success: false, reason: :empty) if s.blank?
 
-      return Validation.new(success: false, reason: :multi_statement) if multi_statement?(s)
+      result = begin
+        PgQuery.parse(s)
+      rescue PgQuery::ParseError => e
+        Rails.logger.info { "[SqlGuard] parse error: #{e.message}" }
+        return Validation.new(success: false, reason: :parse_error)
+      end
 
-      return Validation.new(success: false, reason: :forbidden_keyword) if s.match?(FORBIDDEN_KEYWORDS)
+      tree = result.tree
+      stmts = tree.stmts
+      return Validation.new(success: false, reason: :empty) if stmts.empty?
 
-      return Validation.new(success: false, reason: :not_select) unless s.match?(/\A\s*(WITH|SELECT)\b/mi)
+      if stmts.size > 1
+        return Validation.new(success: false, reason: :multi_statement)
+      end
+
+      node = stmts.first.stmt
+      unless node&.select_stmt
+        return Validation.new(success: false, reason: :not_select)
+      end
 
       Validation.new(success: true, reason: nil)
     end
-
-    def self.multi_statement?(sql)
-      core = sql.sub(/;\s*\z/, "")
-      core.include?(";")
-    end
-    private_class_method :multi_statement?
   end
 end
