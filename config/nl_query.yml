@@ -22,6 +22,12 @@ default: &default
     customers:
       - internal_memo
       - api_token_digest
+  # Epic 3.3–3.4: execution caps (see NlQuery::RunLimits, NlQuery::RunQuery).
+  run_limits:
+    statement_timeout_ms: 15000
+    max_result_rows: 500
+    # Optional PostgreSQL role for SET LOCAL ROLE (identifier: letters, digits, underscore).
+    # execution_role: ask_data_readonly
 
 development:
   <<: *default

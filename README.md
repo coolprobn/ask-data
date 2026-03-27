@@ -48,8 +48,17 @@ Implementation notes (blog-style, updated as we build): [`docs/blog.md`](docs/bl
 ## Product policy & safe errors (Ticket 0.4)
 
 - **In-app:** **`/`** and **`GET /ask`** render the Ask form (`QuestionsController#ask`); **`POST /ask`** runs the NL pipeline (`QuestionsController#create`); **`/policy`** is the “what this can do” page (`StaticPagesController#policy`). The full ticket text is **`docs/ask-data-plan.md`** (section **Ticket 0.4**).
-- **Pipeline:** `NlQuery::NaturalLanguageQuery` runs **ambiguity hints** → `NlQuery::TextToSqlClient` (prompts require SELECT-only, no invented columns, clarify or omit SQL when needed) → **`NlQuery::SqlGuard`** (PostgreSQL parser via **`pg_query`**: exactly one statement, top-level **`SelectStmt`** only — `WITH … SELECT` allowed; DDL/DML/transaction/`EXPLAIN` rejected; parse failures map to safe copy). **`NlQuery::SqlSelectAllowlist`** walks the parse tree (Ticket **3.2**): only **`NlQuery::Exposure`** allowlisted base tables; **`public`** or unqualified schema only; **`SELECT *` / `tbl.*`** denied; column identifiers checked against exposure rules (CTEs/subqueries skip strict column checks).
+- **Pipeline:** `NlQuery::NaturalLanguageQuery` runs **ambiguity hints** → `NlQuery::TextToSqlClient` (prompts require SELECT-only, no invented columns, clarify or omit SQL when needed) → **`NlQuery::SqlGuard`** + **`NlQuery::SqlSelectAllowlist`** (Epic **3** — parser gate and identifier allowlist; see below) → **`NlQuery::RunQuery.perform`** on success (timeouts, row cap, read-only execution).
 - **User-visible strings** live in `NlQuery::ProductPolicy::MESSAGES`; **`NlQuery::QueryResult#user_safe_payload`** omits SQL and internals for UI layers.
+
+## SQL guardrails — Epic 3 (Tickets 3.1–3.4)
+
+- **3.1 — `NlQuery::SqlGuard`:** **`pg_query`** ensures a single top-level **`SelectStmt`** (including `WITH … SELECT`); rejects DDL/DML, `EXPLAIN`, multi-statement strings, etc.; parse errors map to safe user copy.
+- **3.2 — `NlQuery::SqlSelectAllowlist`:** AST walk after the shape gate: **`RangeVar`** relations must be **`NlQuery::Exposure`** allowlisted (or a CTE name); schema absent, empty, or **`public`**; **`SELECT *` / `tbl.*`** denied; column refs checked per **`FROM`** alias map (CTEs/subqueries skip strict column checks).
+- **3.3 — Timeouts and row cap:** **`config/nl_query.yml`** → **`run_limits`**: `statement_timeout_ms`, `max_result_rows`, optional `execution_role`. **`NlQuery::RunLimits`** loads these; **`NlQuery::SqlRunLimits.ensure_max_rows`** rewrites SQL via pg_query (append or clamp outer `LIMIT`; non-constant limits rejected).
+- **3.4 — Read-only execution:** **`NlQuery::RunQuery.perform`** is the only execution path for NL-generated SQL: validate → enforce max rows → validate again → short transaction with **`SET TRANSACTION READ ONLY`** (skipped if unsupported, e.g. nested txn), **`SET LOCAL statement_timeout`**, optional **`SET LOCAL ROLE`** when `execution_role` is set, then **`exec_query`**.
+
+**Tests:** `test/services/nl_query/sql_guard_test.rb`, `sql_run_limits_test.rb`, `run_query_test.rb`.
 - **Suggested questions** for clarification UX: `NlQuery::ProductPolicy::SUGGESTED_QUESTIONS` (keep in sync with README / Epic 6 golden list when you add it).
 
 ## Rails UI — Slim + Tailwind (Ticket 1.1)

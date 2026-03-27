@@ -12,6 +12,22 @@ That keeps scope clear and matches the “stop after each ticket” loop.
 
 ---
 
+## Epic 3 complete — Tickets 3.3–3.4 (timeouts, row cap, guarded execution)
+
+**2025-03-27**
+
+**Ticket 3.3:** **`run_limits`** in **`config/nl_query.yml`** (`statement_timeout_ms`, `max_result_rows`, optional `execution_role`). **`NlQuery::RunLimits`** reads **`Exposure.config`** and builds a safe **`SET LOCAL ROLE`** fragment when the role name matches a strict identifier pattern. **`NlQuery::SqlRunLimits.ensure_max_rows`** parses with **`pg_query`**, mutates the outer **`SelectStmt`** limit (append, clamp high numeric limits, cap **`LIMIT ALL`**), rejects non-constant limits (**`:dynamic_limit`**), and **`PgQuery.deparse`**s back to SQL.
+
+**Ticket 3.4:** **`NlQuery::RunQuery.perform`** runs **`SqlGuard.validate`** → **`SqlRunLimits.ensure_max_rows`** → **`SqlGuard.validate`** again on rewritten SQL → **`run_in_guarded_transaction`**: **`SET TRANSACTION READ ONLY`** (rescued if nested/unsupported), **`SET LOCAL statement_timeout`**, optional **`SET LOCAL ROLE`**, then **`connection.exec_query`**. **`StatementInvalid`** / **`PG::Error`** → **`RunQuery::ExecutionError`**; bad role config → **`ExecutionError`** with **`configuration_error`**.
+
+**`SqlRunLimits`** uses **`def self.*`** + **`private_class_method`** (not **`module_function`**, which is invalid inside a **`class`**).
+
+**Tests:** `sql_run_limits_test.rb`, `run_query_test.rb`; full suite + **`bin/rails zeitwerk:check`** — green.
+
+**Next:** Epic **4** — orchestration polish (`NaturalLanguageQuery` as single pipeline surface, safe errors, result rendering per plan).
+
+---
+
 ## Ticket 3.2 — Identifier allowlisting (AST walk)
 
 **2025-03-27**
@@ -22,7 +38,7 @@ That keeps scope clear and matches the “stop after each ticket” loop.
 
 **Verification:** `bin/rails test` — green.
 
-**Next:** Ticket **3.3** — `statement_timeout` + `LIMIT` enforcement.
+**Next:** See **Epic 3 complete** entry (3.3–3.4); then Epic **4**.
 
 ---
 
@@ -36,7 +52,7 @@ That keeps scope clear and matches the “stop after each ticket” loop.
 
 **Verification:** `bin/rails test`, `bundle install` (native extension).
 
-**Next:** Ticket **3.2** — identifier allowlisting (see newer blog entry); then **3.3** timeouts + `LIMIT`.
+**Next:** Ticket **3.2** (see newer entries); Epic **3** complete through **3.4**.
 
 ---
 
@@ -50,7 +66,7 @@ That keeps scope clear and matches the “stop after each ticket” loop.
 
 **Verification:** `bin/rails test`, `bin/rails zeitwerk:check` — green.
 
-**Next:** Epic **3 / Ticket 3.3** — timeouts + row cap.
+**Next:** Epic **3** (complete — see newest entry); then Epic **4**.
 
 ---
 
