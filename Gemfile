@@ -69,3 +69,6 @@ end
 
 # NL → SQL via Ollama
 gem "ruby_llm", "~> 1.14"
+
+# Slim templates (use .html.slim, not ERB)
+gem "slim-rails"

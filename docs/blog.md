@@ -6,9 +6,23 @@ Technical notes from implementing [ask-data-plan.md](./ask-data-plan.md). Newest
 
 After each completed ticket, the implementer will state **what’s next** (per the plan’s dependency order) and how to verify. To move on, send a short message such as:
 
-- **“Continue with the next ticket”** or **“Implement Ticket 1.1”** (replace with the ID named in the last summary).
+- **“Continue with the next ticket”** or **“Implement Ticket 1.2”** (replace with the ID named in the last summary).
 
 That keeps scope clear and matches the “stop after each ticket” loop.
+
+---
+
+## Ticket 1.1 — Slim layouts + Tailwind for feature views
+
+**2025-03-27**
+
+The app already used **tailwindcss-rails**; this ticket adds **`slim-rails`** and converts the **main layout** and **feature views** (`questions/ask`, `static_pages/policy`) from ERB to **`.html.slim`**. Mailer layouts stay **ERB** (email-friendly defaults); PWA JSON/JS stubs remain as generated.
+
+**Tailwind** is still driven from `app/assets/tailwind/application.css` (`@import "tailwindcss"`); Slim markup uses the same utility classes (`container`, `max-w-3xl`, `text-gray-700`, etc.). Policy copy uses `raw(...)` for static HTML fragments (`<strong>`, `<code>`) to match the previous ERB output without fighting Slim’s inline-tag rules.
+
+**Verification:** `bin/rails test` and `bin/rails zeitwerk:check` — green. Browse/index tables are **Ticket 1.4**, not this ticket.
+
+**Next:** Ticket **1.2** — no authentication (by design) + README warning about exposing the app on the public internet.
 
 ---
 
@@ -22,11 +36,9 @@ Ticket 0.4 makes the “honest limitations” and “product policy” from the 
 
 **Prompts:** `TextToSqlClient::SYSTEM_PROMPT` now explicitly tells the model not to invent columns, to **clarify** when underspecified, and to **omit SQL** when the schema cannot support the question.
 
-**In-app:** **`/`** and **`/ask`** serve **`QuestionsController#ask`** (placeholder Ask UI); **`/policy`** is **`StaticPagesController#policy`** (ERB for now; Slim arrives in Ticket 1.1). Policy points at `docs/ask-data-plan.md`.
+**In-app:** **`/`** and **`/ask`** serve **`QuestionsController#ask`** (placeholder Ask UI); **`/policy`** is **`StaticPagesController#policy`** (Slim since Ticket 1.1). Policy points at `docs/ask-data-plan.md`.
 
 **Verification:** `bin/rails test` covers SqlGuard, NL pipeline with **stubbed** bad SQL (asserts no `INSERT` in user copy), schema gap, and LLM-unavailable mapping. Integration tests cover **`GET /policy`**, **`GET /`**, and **`GET /ask`** separately.
-
-**Next:** Epic **1** — **Ticket 1.1** Rails shell + Slim + Tailwind UI (Ask + browse).
 
 ---
 

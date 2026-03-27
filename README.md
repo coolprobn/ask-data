@@ -35,6 +35,12 @@ Implementation notes (blog-style, updated as we build): [`docs/blog.md`](docs/bl
 - **User-visible strings** live in `NlQuery::ProductPolicy::MESSAGES`; **`NlQuery::QueryResult#user_safe_payload`** omits SQL and internals for UI layers.
 - **Suggested questions** for clarification UX: `NlQuery::ProductPolicy::SUGGESTED_QUESTIONS` (keep in sync with README / Epic 6 golden list when you add it).
 
+## Rails UI — Slim + Tailwind (Ticket 1.1)
+
+- **Templates:** [`slim-rails`](https://github.com/slim-template/slim-rails) is in the Gemfile. App layout and feature screens use **`.html.slim`** (`app/views/layouts/application.html.slim`, `questions/`, `static_pages/`). Mailer layouts remain **ERB** under `app/views/layouts/mailer*`; PWA stubs may stay **ERB** as generated.
+- **CSS:** [tailwindcss-rails](https://github.com/rails/tailwindcss-rails) — `app/assets/tailwind/application.css` imports Tailwind; use utility classes in Slim (`class="..."` / `.class` chains). Run `bin/dev` or `bin/rails tailwindcss:watch` in development so CSS rebuilds.
+- **Browse pages** (tables for customers/products/orders) land in **Ticket 1.4**; this ticket only converts the shell and current Ask/policy pages.
+
 ## Ruby version
 
 See `.ruby-version`.
