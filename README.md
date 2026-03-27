@@ -22,11 +22,16 @@ Implementation notes (blog-style, updated as we build): [`docs/blog.md`](docs/bl
 - **Primary key** lines use `connection.primary_key` (exposed PK columns only). **Foreign key** hints use `connection.foreign_keys` when the referenced table is also allowlisted and both the referencing and referenced columns are exposed (so the model sees join paths such as `orders.customer_id → customers.id`).
 - **Tests:** `test/services/nl_query/schema_snapshot_test.rb` (redaction + PK/FK content).
 
+## NL→SQL via RubyLLM (Epic 2, Tickets 2.2–2.3)
+
+- **`NlQuery::TextToSqlClient`** is the only NL→SQL entry point in `app/`; it uses **`NlQuery::OllamaChatCompletion`**, which calls **RubyLLM** — **no ad-hoc HTTP client** to Ollama elsewhere under `app/`.
+- **Prompts** live in **`NlQuery::Prompts::TextToSql`** (`SYSTEM_PROMPT` and `user_message` for the `Schema:` / `Question:` shape). **Git** is the prompt version history; there is no prompts table in v1 (see plan Phase 2).
+- **Parsing:** model replies go through **`NlQuery::ModelReplyParser`** → **`NlQuery::TextToSqlResult`**. **Tests** inject a fake **`completion`** (`test/services/nl_query/text_to_sql_client_test.rb`, including **`RecordingCompletion`**) so CI never needs a running Ollama.
+
 ## Ollama + RubyLLM (Ticket 0.2)
 
 - **Gem:** [`ruby_llm`](https://rubygems.org/gems/ruby_llm) — all LLM calls go through RubyLLM (no ad-hoc HTTP to Ollama in `app/`).
 - **Config:** `config/initializers/ruby_llm.rb` sets `ollama_api_base` from **`OLLAMA_BASE_URL`** (default `http://127.0.0.1:11434`; normalized to `…/v1` for RubyLLM’s OpenAI-compatible endpoint), **`OLLAMA_MODEL`** (default `qwen2.5-coder:7b`), optional **`OLLAMA_API_KEY`**, and optional **`RUBYLLM_REQUEST_TIMEOUT`** (seconds).
-- **NL→SQL:** `NlQuery::TextToSqlClient` builds system/user messages and returns `NlQuery::TextToSqlResult` (`sql`, `rationale`, `raw`). Inject a fake `completion` in tests so CI does not need Ollama.
 - **Live smoke:** with Ollama running and the model pulled, `ollama list` should include `OLLAMA_MODEL`; then run a manual ask from `rails console` if you want to confirm end-to-end.
 
 ## Mini-shop schema & seeds (Ticket 0.3)

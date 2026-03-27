@@ -12,6 +12,20 @@ That keeps scope clear and matches the “stop after each ticket” loop.
 
 ---
 
+## Tickets 2.2–2.3 — NL→SQL (RubyLLM) + prompts in code
+
+**2025-03-27**
+
+**Ticket 2.2:** **`NlQuery::TextToSqlClient`** still delegates inference to **`NlQuery::OllamaChatCompletion`** (RubyLLM only). **`NlQuery::Prompts::TextToSql`** (Ticket **2.3**) holds **`SYSTEM_PROMPT`** and **`user_message`**, so prompt edits are tracked in git rather than a DB.
+
+**Tests:** `text_to_sql_client_test.rb` adds **`RecordingCompletion`** to assert `complete(system:, user:)` receives the shared system prompt and a user payload containing both schema text and the question; a small test pins key wording (PostgreSQL, SELECT, fenced code blocks).
+
+**Verification:** `bin/rails test`, `bin/rails zeitwerk:check` — green.
+
+**Next:** Epic **3 / Ticket 3.1** — parser-based SELECT gate (replace minimal `SqlGuard`).
+
+---
+
 ## Ticket 2.1 — Schema snapshot builder (allowlist + redaction + PK/FK)
 
 **2025-03-27**
@@ -21,8 +35,6 @@ That keeps scope clear and matches the “stop after each ticket” loop.
 **Tests:** `schema_snapshot_test.rb` asserts no `internal_memo` / `api_token_digest` substrings, PK/FK substrings for the mini-shop FK graph, and that private column loading drops forbidden names.
 
 **Verification:** `bin/rails test`, `bin/rails zeitwerk:check` — green.
-
-**Next:** Ticket **2.2** — confirm NL→SQL is fully exercised via RubyLLM with stubbed tests (already largely true); tighten docs or add integration smoke notes if needed. Then **2.3** prompts polish.
 
 ---
 
@@ -74,7 +86,7 @@ Ticket 0.4 makes the “honest limitations” and “product policy” from the 
 
 **`NlQuery::NaturalLanguageQuery`** ties it together: ambiguity → optional early exit; otherwise NL→SQL; empty SQL → **schema gap** message; failing guard → **guard rejected** without echoing the bad SQL; **`LlMUnavailableError`** → a short connectivity message (no stack traces). **`NlQuery::QueryResult`** exposes **`user_safe_payload`** for future controllers so the UI never gets raw SQL on error paths.
 
-**Prompts:** `TextToSqlClient::SYSTEM_PROMPT` now explicitly tells the model not to invent columns, to **clarify** when underspecified, and to **omit SQL** when the schema cannot support the question.
+**Prompts:** `NlQuery::Prompts::TextToSql::SYSTEM_PROMPT` (since Epic 2 Tickets 2.2–2.3; was on `TextToSqlClient` in Ticket 0.4) tells the model not to invent columns, to **clarify** when underspecified, and to **omit SQL** when the schema cannot support the question.
 
 **In-app:** **`/`** and **`/ask`** serve **`QuestionsController#ask`** (placeholder Ask UI); **`/policy`** is **`StaticPagesController#policy`** (Slim since Ticket 1.1). Policy points at `docs/ask-data-plan.md`.
 
