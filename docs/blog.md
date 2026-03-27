@@ -12,6 +12,20 @@ That keeps scope clear and matches the “stop after each ticket” loop.
 
 ---
 
+## Ticket 2.1 — Schema snapshot builder (allowlist + redaction + PK/FK)
+
+**2025-03-27**
+
+**`NlQuery::SchemaSnapshot`** now builds LLM-facing text per allowlisted table: **`information_schema`** column metadata filtered through **`Exposure.column_exposed?`** before formatting (forbidden columns never appear). **`connection.primary_key`** drives a **Primary key:** line (only exposed parts). **`connection.foreign_keys`** emits **Foreign keys:** lines when the target table is allowlisted and both ends of the relationship pass exposure checks.
+
+**Tests:** `schema_snapshot_test.rb` asserts no `internal_memo` / `api_token_digest` substrings, PK/FK substrings for the mini-shop FK graph, and that private column loading drops forbidden names.
+
+**Verification:** `bin/rails test`, `bin/rails zeitwerk:check` — green.
+
+**Next:** Ticket **2.2** — confirm NL→SQL is fully exercised via RubyLLM with stubbed tests (already largely true); tighten docs or add integration smoke notes if needed. Then **2.3** prompts polish.
+
+---
+
 ## Ticket 1.3 — Ask UI + verification hints (browse indexes)
 
 **2025-03-27**

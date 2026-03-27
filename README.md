@@ -16,6 +16,12 @@ Implementation notes (blog-style, updated as we build): [`docs/blog.md`](docs/bl
 - **Changing exposure:** edit that file (and redeploy/restart); run tests under `test/services/nl_query/` after changes.
 - **Runtime API:** `NlQuery::Exposure` filters columns for LLM schema text (`filter_columns_for_llm`, `llm_schema_lines_for_table`) and strips forbidden keys from result rows (`redact_result_row`).
 
+## Schema snapshot for the LLM (Epic 2, Ticket 2.1)
+
+- **`NlQuery::SchemaSnapshot.for_llm`** assembles the **Schema:** block passed to the NL→SQL client: one section per allowlisted table from `config/nl_query.yml`. Column names and types come from PostgreSQL `information_schema.columns`, then **only exposed** columns are kept (`NlQuery::Exposure` — forbidden patterns and explicit denials such as `customers.internal_memo` are omitted entirely).
+- **Primary key** lines use `connection.primary_key` (exposed PK columns only). **Foreign key** hints use `connection.foreign_keys` when the referenced table is also allowlisted and both the referencing and referenced columns are exposed (so the model sees join paths such as `orders.customer_id → customers.id`).
+- **Tests:** `test/services/nl_query/schema_snapshot_test.rb` (redaction + PK/FK content).
+
 ## Ollama + RubyLLM (Ticket 0.2)
 
 - **Gem:** [`ruby_llm`](https://rubygems.org/gems/ruby_llm) — all LLM calls go through RubyLLM (no ad-hoc HTTP to Ollama in `app/`).
@@ -48,7 +54,7 @@ Implementation notes (blog-style, updated as we build): [`docs/blog.md`](docs/bl
 
 ## Ask UI + browse tables (Tickets 1.3–1.4)
 
-- **Ask:** `questions/ask` — textarea, **`POST /ask`** to run **`NlQuery::NaturalLanguageQuery`** with a live **`NlQuery::SchemaSnapshot`** from `information_schema`, then **`NlQuery::RunQuery`** on success paths only. Suggested questions and chips read from **`NlQuery::ProductPolicy::SUGGESTED_QUESTIONS`** (single source of truth). Stimulus **`ask-form`** handles example chips and a disabled “Running…” submit state.
+- **Ask:** `questions/ask` — textarea, **`POST /ask`** to run **`NlQuery::NaturalLanguageQuery`** with a live **`NlQuery::SchemaSnapshot.for_llm`** (see Epic 2 above), then **`NlQuery::RunQuery`** on success paths only. Suggested questions and chips read from **`NlQuery::ProductPolicy::SUGGESTED_QUESTIONS`** (single source of truth). Stimulus **`ask-form`** handles example chips and a disabled “Running…” submit state.
 - **Browse (read-only):** **`GET /customers`**, **`GET /products`**, **`GET /orders`** — simple index tables to sanity-check NL results against seed data (Ticket 1.4 scope folded in so verification links work).
 - **Nav:** layout partial `layouts/_nav` links Ask, browse routes, and policy.
 
