@@ -12,6 +12,20 @@ That keeps scope clear and matches the “stop after each ticket” loop.
 
 ---
 
+## Ticket 3.2 — Identifier allowlisting (AST walk)
+
+**2025-03-27**
+
+**`NlQuery::SqlSelectAllowlist`** walks the **`SelectStmt`** from **`pg_query`** after Ticket 3.1’s shape checks: **`RangeVar`** relations must be **`NlQuery::Exposure`** allowlisted (or a **CTE** name); schema must be absent, empty, or **`public`**; **`SELECT *` / `tbl.*`** (`ColumnRef` **`a_star`**) are rejected; **`COUNT(*)`**-style aggregate stars stay allowed. Column refs are checked against **`Exposure.column_exposed?`** using a per-**`FROM`** alias map; **CTE** and **subquery** aliases skip column checks on qualified/unqualified refs. **`SqlGuard.validate`** runs this after the single-statement **`SelectStmt`** gate.
+
+**Tests:** `sql_guard_test.rb` adds cases for star, fake table, `internal_memo`, non-`public` schema, happy path, and `COUNT(*)`.
+
+**Verification:** `bin/rails test` — green.
+
+**Next:** Ticket **3.3** — `statement_timeout` + `LIMIT` enforcement.
+
+---
+
 ## Ticket 3.1 — Parser-based SELECT-only gate (`pg_query`)
 
 **2025-03-27**
@@ -22,7 +36,7 @@ That keeps scope clear and matches the “stop after each ticket” loop.
 
 **Verification:** `bin/rails test`, `bundle install` (native extension).
 
-**Next:** Ticket **3.2** — AST walk / identifier allowlisting (and policy for `SELECT *`).
+**Next:** Ticket **3.2** — identifier allowlisting (see newer blog entry); then **3.3** timeouts + `LIMIT`.
 
 ---
 
@@ -36,7 +50,7 @@ That keeps scope clear and matches the “stop after each ticket” loop.
 
 **Verification:** `bin/rails test`, `bin/rails zeitwerk:check` — green.
 
-**Next:** Epic **3 / Ticket 3.2** — identifier allowlisting on the parse tree.
+**Next:** Epic **3 / Ticket 3.3** — timeouts + row cap.
 
 ---
 

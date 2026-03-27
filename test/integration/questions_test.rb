@@ -54,7 +54,7 @@ class QuestionsTest < ActionDispatch::IntegrationTest
       interpretation: NlQuery::ProductPolicy::TRUST_COPY_SUCCESS,
       suggestions: nil,
       support_id: "00000000-0000-0000-0000-000000000002",
-      sql: "SELECT * FROM definitely_not_a_table_in_this_db",
+      sql: "SELECT 1/0 AS n",
       internal_note: nil
     )
     fake = Object.new

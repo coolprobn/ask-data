@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 module NlQuery
-  # Executes SqlGuard-approved SELECTs only (Epic 3 adds timeouts + row caps).
+  # Executes SqlGuard-approved SELECTs only (Epic 3.3 adds timeouts + row caps).
   class RunQuery
     class ExecutionError < Error; end
 

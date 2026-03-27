@@ -97,7 +97,8 @@ module NlQuery
 
     def user_message_for_guard(reason)
       case reason
-      when :not_select, :multi_statement, :parse_error
+      when :not_select, :multi_statement, :parse_error, :disallowed_schema, :disallowed_table,
+           :disallowed_column, :select_star
         ProductPolicy::MESSAGES[:guard_rejected]
       else
         ProductPolicy::MESSAGES[:bad_sql_from_model]

@@ -31,6 +31,10 @@ module NlQuery
         return Validation.new(success: false, reason: :not_select)
       end
 
+      if (allowlist_reason = SqlSelectAllowlist.validate(node.select_stmt))
+        return Validation.new(success: false, reason: allowlist_reason)
+      end
+
       Validation.new(success: true, reason: nil)
     end
   end

@@ -12,7 +12,7 @@ module NlQuery
     test "accepts WITH ... SELECT" do
       sql = <<~SQL
         WITH t AS (SELECT 1 AS x)
-        SELECT * FROM t
+        SELECT x FROM t
       SQL
       v = SqlGuard.validate(sql)
       assert v.success
@@ -100,6 +100,46 @@ module NlQuery
       v = SqlGuard.validate("-- only a comment")
       assert_not v.success
       assert_equal :empty, v.reason
+    end
+
+    test "rejects SELECT star against allowlist policy" do
+      v = SqlGuard.validate("SELECT * FROM orders")
+      assert_not v.success
+      assert_equal :select_star, v.reason
+    end
+
+    test "rejects qualified table star" do
+      v = SqlGuard.validate("SELECT orders.* FROM orders")
+      assert_not v.success
+      assert_equal :select_star, v.reason
+    end
+
+    test "rejects non-allowlisted table" do
+      v = SqlGuard.validate("SELECT 1 AS n FROM totally_fake_table_xyz LIMIT 1")
+      assert_not v.success
+      assert_equal :disallowed_table, v.reason
+    end
+
+    test "rejects forbidden column name" do
+      v = SqlGuard.validate("SELECT internal_memo FROM customers")
+      assert_not v.success
+      assert_equal :disallowed_column, v.reason
+    end
+
+    test "rejects non-public schema" do
+      v = SqlGuard.validate("SELECT 1 FROM other.orders")
+      assert_not v.success
+      assert_equal :disallowed_schema, v.reason
+    end
+
+    test "accepts allowlisted table and column" do
+      v = SqlGuard.validate("SELECT id, email FROM customers LIMIT 5")
+      assert v.success
+    end
+
+    test "accepts COUNT aggregate star" do
+      v = SqlGuard.validate("SELECT COUNT(*) FROM orders")
+      assert v.success
     end
   end
 end
