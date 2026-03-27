@@ -1,0 +1,22 @@
+- content_for :title, "Orders"
+
+h1.text-2xl.font-semibold.mb-4 Orders
+p.text-sm.text-gray-600.mb-4 Read-only browse (seed data). #{@orders.size} rows.
+
+.overflow-x-auto
+  table.min-w-full.border.border-gray-200.text-sm
+    thead.bg-gray-50
+      tr
+        th.border-b.border-gray-200.px-3.py-2.text-left ID
+        th.border-b.border-gray-200.px-3.py-2.text-left Customer
+        th.border-b.border-gray-200.px-3.py-2.text-left Status
+        th.border-b.border-gray-200.px-3.py-2.text-left Placed
+        th.border-b.border-gray-200.px-3.py-2.text-right Total (cents)
+    tbody
+      - @orders.each do |o|
+        tr.hover:bg-gray-50
+          td.border-t.border-gray-100.px-3.py-2= o.id
+          td.border-t.border-gray-100.px-3.py-2= o.customer.email
+          td.border-t.border-gray-100.px-3.py-2= o.status
+          td.border-t.border-gray-100.px-3.py-2.whitespace-nowrap= l(o.placed_at, format: :short)
+          td.border-t.border-gray-100.px-3.py-2.text-right= o.total_cents

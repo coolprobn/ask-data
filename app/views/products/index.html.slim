@@ -1,0 +1,22 @@
+- content_for :title, "Products"
+
+h1.text-2xl.font-semibold.mb-4 Products
+p.text-sm.text-gray-600.mb-4 Read-only browse (seed data). #{@products.size} rows.
+
+.overflow-x-auto
+  table.min-w-full.border.border-gray-200.text-sm
+    thead.bg-gray-50
+      tr
+        th.border-b.border-gray-200.px-3.py-2.text-left ID
+        th.border-b.border-gray-200.px-3.py-2.text-left SKU
+        th.border-b.border-gray-200.px-3.py-2.text-left Name
+        th.border-b.border-gray-200.px-3.py-2.text-left Category
+        th.border-b.border-gray-200.px-3.py-2.text-right Price (cents)
+    tbody
+      - @products.each do |p|
+        tr.hover:bg-gray-50
+          td.border-t.border-gray-100.px-3.py-2= p.id
+          td.border-t.border-gray-100.px-3.py-2.font-mono.text-xs= p.sku
+          td.border-t.border-gray-100.px-3.py-2= p.name
+          td.border-t.border-gray-100.px-3.py-2= p.category.name
+          td.border-t.border-gray-100.px-3.py-2.text-right= p.price_cents

@@ -12,6 +12,22 @@ That keeps scope clear and matches the “stop after each ticket” loop.
 
 ---
 
+## Ticket 1.3 — Ask UI + verification hints (browse indexes)
+
+**2025-03-27**
+
+**Ask** (`questions/ask.html.slim`): textarea, **`POST /ask`** → **`NlQuery::SchemaSnapshot.for_llm`** (allowlisted tables via `information_schema`) + **`NlQuery::NaturalLanguageQuery`**, then **`NlQuery::RunQuery`** when the pipeline returns **`success`** (guarded execution; SQL never rendered in the HTML). User-facing errors use **`ProductPolicy::MESSAGES`**; execution failures add **`execution_failed`**. **Suggested questions** expanded to **9** strings in **`NlQuery::ProductPolicy::SUGGESTED_QUESTIONS`**; chips use **`button_tag`** + Stimulus **`ask-form`** (`fill` params, submit loading state).
+
+**Browse / Ticket 1.4 overlap:** `customers#index`, `products#index`, `orders#index` (read-only tables) plus **`layouts/_nav`** so Ask verification hints use real `link_to` targets and browse is discoverable. Optional **`categories#index`** remains if you want parity with the plan’s “optional” row.
+
+**Tests:** service tests for **`SchemaSnapshot`** and **`RunQuery`**; integration tests for **`POST /ask`** (ambiguous question, stubbed success + table, stubbed execution failure) plus one **`GET`** per browse controller; **`QuestionsController.nl_query_executor`** hook for fakes.
+
+**Verification:** `bin/rails test`, `bin/rails zeitwerk:check` — green.
+
+**Next:** Epic **2 / Ticket 2.1** (full allowlist/redaction schema snapshot) or add **`categories#index`** to close Ticket **1.4** optional scope.
+
+---
+
 ## Ticket 1.2 — No authentication (by design)
 
 **2025-03-27**

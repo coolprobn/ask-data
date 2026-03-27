@@ -11,5 +11,10 @@ Rails.application.routes.draw do
 
   root "questions#ask"
   get "ask", to: "questions#ask", as: :ask
+  post "ask", to: "questions#create"
   get "policy", to: "static_pages#policy", as: :policy
+
+  resources :customers, only: [ :index ]
+  resources :products, only: [ :index ]
+  resources :orders, only: [ :index ]
 end

@@ -36,7 +36,7 @@ Implementation notes (blog-style, updated as we build): [`docs/blog.md`](docs/bl
 
 ## Product policy & safe errors (Ticket 0.4)
 
-- **In-app:** **`/`** and **`/ask`** render the Ask placeholder (`QuestionsController#ask`); **`/policy`** is the “what this can do” page (`StaticPagesController#policy`). The full ticket text is **`docs/ask-data-plan.md`** (section **Ticket 0.4**).
+- **In-app:** **`/`** and **`GET /ask`** render the Ask form (`QuestionsController#ask`); **`POST /ask`** runs the NL pipeline (`QuestionsController#create`); **`/policy`** is the “what this can do” page (`StaticPagesController#policy`). The full ticket text is **`docs/ask-data-plan.md`** (section **Ticket 0.4**).
 - **Pipeline:** `NlQuery::NaturalLanguageQuery` runs **ambiguity hints** → `NlQuery::TextToSqlClient` (prompts require SELECT-only, no invented columns, clarify or omit SQL when needed) → **`NlQuery::SqlGuard`** (minimal read-only gate: no DDL/DML keywords, single statement, `WITH`/`SELECT` only).
 - **User-visible strings** live in `NlQuery::ProductPolicy::MESSAGES`; **`NlQuery::QueryResult#user_safe_payload`** omits SQL and internals for UI layers.
 - **Suggested questions** for clarification UX: `NlQuery::ProductPolicy::SUGGESTED_QUESTIONS` (keep in sync with README / Epic 6 golden list when you add it).
@@ -45,7 +45,12 @@ Implementation notes (blog-style, updated as we build): [`docs/blog.md`](docs/bl
 
 - **Templates:** [`slim-rails`](https://github.com/slim-template/slim-rails) is in the Gemfile. App layout and feature screens use **`.html.slim`** (`app/views/layouts/application.html.slim`, `questions/`, `static_pages/`). Mailer layouts remain **ERB** under `app/views/layouts/mailer*`; PWA stubs may stay **ERB** as generated.
 - **CSS:** [tailwindcss-rails](https://github.com/rails/tailwindcss-rails) — `app/assets/tailwind/application.css` imports Tailwind; use utility classes in Slim (`class="..."` / `.class` chains). Run `bin/dev` or `bin/rails tailwindcss:watch` in development so CSS rebuilds.
-- **Browse pages** (tables for customers/products/orders) land in **Ticket 1.4**; this ticket only converts the shell and current Ask/policy pages.
+
+## Ask UI + browse tables (Tickets 1.3–1.4)
+
+- **Ask:** `questions/ask` — textarea, **`POST /ask`** to run **`NlQuery::NaturalLanguageQuery`** with a live **`NlQuery::SchemaSnapshot`** from `information_schema`, then **`NlQuery::RunQuery`** on success paths only. Suggested questions and chips read from **`NlQuery::ProductPolicy::SUGGESTED_QUESTIONS`** (single source of truth). Stimulus **`ask-form`** handles example chips and a disabled “Running…” submit state.
+- **Browse (read-only):** **`GET /customers`**, **`GET /products`**, **`GET /orders`** — simple index tables to sanity-check NL results against seed data (Ticket 1.4 scope folded in so verification links work).
+- **Nav:** layout partial `layouts/_nav` links Ask, browse routes, and policy.
 
 ## No authentication by design (Ticket 1.2)
 

@@ -15,5 +15,6 @@ html
     = stylesheet_link_tag :app, "data-turbo-track": "reload"
     = javascript_importmap_tags
   body
-    main class="container mx-auto mt-28 px-5 flex"
+    = render "layouts/nav"
+    main.container.mx-auto.mt-8.mb-12.px-5
       = yield

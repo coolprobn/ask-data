@@ -1,7 +1,68 @@
 - content_for :title, "Ask Data"
 
-.max-w-3xl
+.max-w-3xl data-controller="ask-form"
   h1.text-2xl.font-semibold.mb-2 Ask Data
-  p.text-gray-700.mb-4 Natural-language → read-only SQL (demo app). Epic 1 adds the Ask UI.
-  p
+  p.text-gray-700.mb-2 Natural-language → read-only SQL (demo mini-shop). Seed counts: 10 categories, 42 products, 24 customers, 75 orders — see README to verify.
+  p.text-sm.text-gray-600.mb-4
+    | Compare answers on browse pages:
+    =<> link_to "Customers", customers_path, class: "text-blue-600 underline"
+    | ,
+    =<> link_to "Products", products_path, class: "text-blue-600 underline"
+    | ,
+    =<> link_to "Orders", orders_path, class: "text-blue-600 underline"
+    | .
+
+  = form_with url: ask_path, method: :post, local: true, data: { turbo: false, action: "submit->ask-form#submitStart" } do |f|
+    = f.label :question, "Your question", class: "block text-sm font-medium text-gray-700 mb-1"
+    = f.text_area :question, value: @question, rows: 4, id: "ask-question",
+      class: "w-full border border-gray-300 rounded-md p-2 text-sm shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500",
+      data: { ask_form_target: "textarea" }
+    .mt-3.flex.flex-wrap.items-center.gap-2
+      = f.submit "Run query", class: "inline-flex items-center rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-60",
+        data: { ask_form_target: "submit" }
+
+  - if NlQuery::ProductPolicy::SUGGESTED_QUESTIONS.any?
+    p.text-sm.font-medium.text-gray-700.mt-6.mb-2 Try these
+    .flex.flex-wrap.gap-2
+      - NlQuery::ProductPolicy::SUGGESTED_QUESTIONS.each do |q|
+        = button_tag q.truncate(72), type: "button",
+          class: "rounded-full border border-gray-300 bg-gray-50 px-3 py-1 text-xs text-gray-800 hover:bg-gray-100",
+          data: { action: "ask-form#fill", ask_form_question_param: q }
+
+  - if @nl_result
+    - if @execution_error
+      .mt-6.rounded-md.border.border-red-200.bg-red-50.p-3.text-sm.text-red-900
+        = @execution_error
+    - elsif @nl_result.user_message.present?
+      .mt-6.rounded-md.border.border-amber-200.bg-amber-50.p-3.text-sm.text-amber-950
+        = @nl_result.user_message
+        - if @nl_result.suggestions.present?
+          ul.mt-2.list-disc.pl-5
+            - @nl_result.suggestions.each do |s|
+              li= s
+    - elsif @nl_result.interpretation.present?
+      p.mt-6.text-sm.text-gray-600= @nl_result.interpretation
+
+    - if @columns.present? && @rows
+      .mt-4.overflow-x-auto
+        table.min-w-full.border.border-gray-200.text-sm
+          thead.bg-gray-50
+            tr
+              - @columns.each do |col|
+                th.border-b.border-gray-200.px-3.py-2.text-left.font-medium.text-gray-700= col
+          tbody
+            - if @rows.empty?
+              tr
+                td.px-3.py-4.text-gray-600 colspan="#{@columns.size}" No rows returned.
+            - else
+              - @rows.each do |row|
+                tr.hover:bg-gray-50
+                  - @columns.each do |col|
+                    td.border-t.border-gray-100.px-3.py-2.text-gray-900= row[col]
+
+  p.mt-8
     = link_to "What this can do (product policy)", policy_path, class: "text-blue-600 underline"
+  - if @nl_result
+    p.mt-2.text-xs.text-gray-400
+      | Support id:
+      =<> @nl_result.support_id

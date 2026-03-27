@@ -10,7 +10,10 @@ module NlQuery
       "Top 5 products by units sold.",
       "Orders that include more than one line item.",
       "Customers who have never placed an order.",
-      "Average order value by month for shipped orders only."
+      "Average order value by month for shipped orders only.",
+      "How many orders are in each status (pending, paid, shipped, cancelled)?",
+      "What is the total revenue from orders placed in 2024?",
+      "List the top 3 customers by total order spend."
     ].freeze
 
     MESSAGES = {
@@ -19,7 +22,8 @@ module NlQuery
       guard_rejected: "We couldn’t turn that into a safe read-only query. Try simplifying the question or focusing on one table at a time.",
       bad_sql_from_model: "We couldn’t use the generated query safely. Rephrase your question, or ask about the demo shop tables only.",
       llm_unavailable: "The language model isn’t reachable right now. Check that Ollama is running and try again.",
-      generic_failure: "Something went wrong while processing your question. Please try again in a moment."
+      generic_failure: "Something went wrong while processing your question. Please try again in a moment.",
+      execution_failed: "We couldn’t run that query against the database. Try simplifying the question or one of the examples below."
     }.freeze
 
     TRUST_COPY_SUCCESS = "Running a single read-only SELECT against your database using only allowlisted tables and columns."
