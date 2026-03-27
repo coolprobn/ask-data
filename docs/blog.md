@@ -6,9 +6,23 @@ Technical notes from implementing [ask-data-plan.md](./ask-data-plan.md). Newest
 
 After each completed ticket, the implementer will state **what’s next** (per the plan’s dependency order) and how to verify. To move on, send a short message such as:
 
-- **“Continue with the next ticket”** or **“Implement Ticket 0.2”** (replace with the ID named in the last summary).
+- **“Continue with the next ticket”** or **“Implement Ticket 0.4”** (replace with the ID named in the last summary).
 
 That keeps scope clear and matches the “stop after each ticket” loop.
+
+---
+
+## Ticket 0.3 — Mini-shop Postgres schema + deterministic seeds
+
+**2025-03-27**
+
+This ticket adds the **locked** e-commerce demo from the plan: one migration creates `categories`, `products`, `customers` (with **`internal_memo`** for redaction demos), `orders`, and `order_items`, plus indexes on FKs and on `orders.placed_at` / `orders.status`. ActiveRecord models wire associations and validate order **status** against the four string values the plan expects.
+
+**Seeds** live in **`db/seeds/mini_shop.rb`** and are loaded from **`db/seeds.rb`**. The script is fully deterministic: fixed category names, `SEED-001`…`SEED-042` SKUs, and a scripted split of products across categories (8×4 + 2×5 = **42** products). The last two SKUs are never attached to an order. **Whale Wholesale LLC** (`whale@seed.example.com`) takes **38** orders with a 10% line-price bump so aggregates and `ORDER BY` demos have a clear outlier. **Four** customers (`nosale01`…`nosale04`) never receive orders. **75** orders use a fixed status array (enough **cancelled** and **pending** rows for filter examples). **55** orders sit in the 2024–2025 range; **20** are scheduled from **2025-12-11** onward so “after 10 December 2025”–style questions have plenty of rows. **SEED-007** is duplicated across two orders to exercise join semantics.
+
+**Verification:** `bin/rails db:reset` (or test DB migrate + seed) completes cleanly; README documents the final counts; **`bin/rails test`** includes light model tests for associations and status validation.
+
+**Next:** Ticket **0.4** — product policy in prompts + safe errors (clarification, no SQL leakage to users) and tests for stubbed bad SQL paths.
 
 ---
 

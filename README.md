@@ -17,6 +17,17 @@ Implementation notes (blog-style, updated as we build): [`docs/blog.md`](docs/bl
 - **NL→SQL:** `NlQuery::TextToSqlClient` builds system/user messages and returns `NlQuery::TextToSqlResult` (`sql`, `rationale`, `raw`). Inject a fake `completion` in tests so CI does not need Ollama.
 - **Live smoke:** with Ollama running and the model pulled, `ollama list` should include `OLLAMA_MODEL`; then run a manual ask from `rails console` if you want to confirm end-to-end.
 
+## Mini-shop schema & seeds (Ticket 0.3)
+
+- **Tables:** `categories`, `products`, `customers` (includes nullable `internal_memo` for redaction demos), `orders`, `order_items` — see migration `db/migrate/*_create_mini_shop.rb` and `db/schema.rb`.
+- **Reproducible counts** after `bin/rails db:seed` (or `bin/rails db:reset`):
+  - **10** categories  
+  - **42** products (**2** never appear on any line item: **SEED-041**, **SEED-042**)  
+  - **24** customers (**4** have zero orders: emails `nosale01@seed.example.com` … `nosale04@seed.example.com`)  
+  - **75** orders (`placed_at` from **2024** through **2026**; **20** orders strictly after **2025-12-10** for date-range demos)  
+  - **225** order line items (1–5 lines per order; **SEED-007** appears on more than one order)  
+  - **Whale** customer `whale@seed.example.com`: **38** orders with slightly marked-up line prices for high `total_cents` totals.
+
 ## Ruby version
 
 See `.ruby-version`.
@@ -26,6 +37,8 @@ See `.ruby-version`.
 ```bash
 bundle install
 bin/rails db:create db:migrate db:seed
+# or recreate everything from migrations + seeds:
+bin/rails db:reset
 ```
 
 (PostgreSQL must be running; database names come from `config/database.yml`.)
