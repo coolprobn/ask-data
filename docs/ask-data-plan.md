@@ -17,9 +17,6 @@ todos:
   - id: epic-4-orchestration
     content: Orchestrator + safe user-facing errors + result table
     status: pending
-  - id: epic-5-tests-browser
-    content: Automated test suite + browser validation runbook + what to configure locally
-    status: pending
   - id: epic-6-quality-slim
     content: Small golden-question set on seed data (optional but recommended)
     status: pending
@@ -417,61 +414,13 @@ Use the Ruby your plan targets (e.g. **3.3+**); the implementer will ensure it s
 
 ---
 
-## Epic 5 — Tests + browser validation (required for “done”)
-
-This epic is how we prove the thing works without leaning on Phase 2 ops.
-
-### Ticket 5.1 — Automated tests (what to write)
-
-**Description**
-
-- **Unit:** validator (large suite), column redaction, LIMIT enforcement.
-- **Integration:** full pipeline with **stubbed LLM** returning fixed SQL strings (good and bad).
-- **Optional smoke:** one integration test with VCR against real API marked optional/`--tag slow` if you want.
-
-**Acceptance criteria**
-
-- `bin/rails test` is green without network or secrets.
-
-### Ticket 5.2 — Browser validation runbook (for implementer / agent)
-
-**Description**
-
-- Manual checklist after automated tests:
-  - Load query page, submit example: “orders placed after 10 December 2025” (or another **Demo domain** question), verify the results table matches **browse pages** / `rails runner` counts.
-  - Confirm forbidden columns never appear.
-  - Confirm a rejected/bad SQL path shows safe messaging.
-
-**Acceptance criteria**
-
-- Checklist exists in README under “Manual QA”.
-
-### Ticket 5.3 — What you need to set up so implementation can run tests + browser checks
-
-**Provide or confirm (no secrets pasted in chat):**
-
-
-| Item                                                                         | Why                                                                                                 |
-| ---------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| **Ruby version** (`.ruby-version`)                                           | Consistent `bundle install` / tests                                                                 |
-| **PostgreSQL** running locally                                               | App + system tests                                                                                  |
-| `**.env` or `direnv`** with `OLLAMA_BASE_URL` + `OLLAMA_MODEL`               | **Live** NL smoke (Ollama running + model pulled); CI stays stubbed                                 |
-| **Seed data** acceptable for your privacy rules                              | Repeatable demo questions                                                                           |
-| **How to boot the server** (`bin/dev` / `rails s`) + **port** (default 3000) | Browser MCP hits `http://localhost:PORT`                                                            |
-| If the implementer/agent **cannot** reach your machine’s localhost           | Use **Cloudflare Tunnel**, **ngrok**, or run the same steps on your machine following the checklist |
-
-
-**Note:** Cursor’s browser tools can drive **your** reachable URL. The agent can run `rails test` and `rails s` in the sandbox **if** the repo and DB exist in that environment; for **your** laptop-only Postgres, you run the server and the agent validates via browser MCP against `localhost` **when** the tooling shares network with your machine (when it doesn’t, you execute the checklist or expose a tunnel).
-
----
-
 ## Epic 6 — Slim quality gate (recommended, not bloated)
 
 ### Ticket 6.1 — Small “golden” set
 
 **Description**
 
-- 10–30 seeded questions with expected row counts or “must include columns” assertions—run in CI with stubbed LLM or deterministic SQL injection for harness only.
+- 10–30 seeded questions with expected row counts or “must include columns” assertions. Run in CI with stubbed LLM or deterministic SQL injection for harness only.
 
 ### Ticket 6.2 — Defer human review workflow
 
@@ -491,15 +440,14 @@ This epic is how we prove the thing works without leaning on Phase 2 ops.
 
 ---
 
-## Dependency order (speed path)
+## Dependency order (speed path — no dedicated test epic)
 
 1. Epic 0 minimal config + Ollama env + **scope/product policy (Ticket 0.4)** — prerequisites at top of this doc
 2. Epic 1 scaffold + UI (**no auth**; README warning)
 3. Epic 2 schema + RubyLLM/Ollama text-to-SQL (stubbed tests)
 4. Epic 3 validators + execution
 5. Epic 4 orchestrator
-6. Epic 5 automated tests + README manual QA + your local env for smoke
-7. Epic 6 small golden set (optional but cheap insurance)
+6. Epic 6 small golden set (optional but cheap insurance)
 
 ---
 
@@ -508,4 +456,3 @@ This epic is how we prove the thing works without leaning on Phase 2 ops.
 - Semantic layer / predefined metrics for KPI questions.
 - Row-level tenant filters injected without LLM string concat.
 - Embeddings over internal glossary for terminology.
-

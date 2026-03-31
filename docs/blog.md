@@ -56,6 +56,18 @@ That keeps scope clear and matches the “stop after each ticket” loop.
 
 ---
 
+## Ticket 6.1 — Small “golden” set (query harness)
+
+**2025-03-27**
+
+`NlQuery::GoldenQuestionsTest` seeds a tiny, in-memory mini-shop (3 customers, 3 orders, 3 products) and runs a handful of deterministic SQL queries through the full `RunQuery` path (guards + limits + read-only execution) to assert expected row counts: orders after a cutoff date, customers with no orders, “top product by units”, orders with multiple line items, and a simple “whale customer orders” check. This is the Epic 6 “small golden set” harness, implemented as plain SQL tests without involving the LLM.
+
+**Verification:** `bin/rails test test/services/nl_query/golden_questions_test.rb` (also covered by the full suite).
+
+**Ticket 6.2:** Human review workflow is explicitly deferred for v1 as in the plan; rely on CI + logs + issues instead of a dedicated UI.
+
+---
+
 ## Tickets 2.2–2.3 — NL→SQL (RubyLLM) + prompts in code
 
 **2025-03-27**
