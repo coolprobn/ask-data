@@ -1,97 +1,58 @@
 # Ask Data
 
-Natural-language → read-only SQL against PostgreSQL (Rails + Ollama). See `docs/ask-data-plan.md` for the full roadmap.
+Rails app that turns natural-language questions into **read-only** PostgreSQL queries, using a local **Ollama** model via **RubyLLM**.
 
-Implementation notes (blog-style, updated as we build): [`docs/blog.md`](docs/blog.md).
+- **Roadmap and tickets:** [`docs/ask-data-plan.md`](docs/ask-data-plan.md)
+- **Build log / implementation notes:** [`docs/blog.md`](docs/blog.md)
 
-## Security warning — no authentication (Ticket 1.2)
+## Prerequisites
 
-**This app ships without authentication** (no Devise, sessions, HTTP Basic, or API tokens for the UI). That keeps the learning and localhost demo path minimal.
+- **Ruby** — version in [`.ruby-version`](.ruby-version) (use rbenv, asdf, etc.)
+- **PostgreSQL** — running and reachable per `config/database.yml`
+- **Ollama** — installed and running when you want **live** NL→SQL (the test suite stubs the LLM and does not require Ollama)
 
-**Do not expose this stack to the public internet as-is.** Anyone who can reach the web UI can run the natural-language query flow against your machine’s Postgres and Ollama. **Read-only SQL validation protects the database from writes**, but it does **not** protect you from **unauthorized use** of the app, resource exhaustion, or abuse of your Ollama endpoint. If you ever deploy beyond a trusted network, add **authentication, rate limiting, and operational hardening** (see Phase 2 in the plan) or keep access private (VPN, SSH tunnel, etc.).
+## Environment variables
 
-## NL query exposure (Ticket 0.1)
-
-- **Single source of truth:** `config/nl_query.yml` defines which **tables** may be used in NL queries and which **columns** are forbidden (patterns + per-table list).
-- **Changing exposure:** edit that file (and redeploy/restart); run tests under `test/services/nl_query/` after changes.
-- **Runtime API:** `NlQuery::Exposure` filters columns for LLM schema text (`filter_columns_for_llm`, `llm_schema_lines_for_table`) and strips forbidden keys from result rows (`redact_result_row`).
-
-## Schema snapshot for the LLM (Epic 2, Ticket 2.1)
-
-- **`NlQuery::SchemaSnapshot.for_llm`** assembles the **Schema:** block passed to the NL→SQL client: one section per allowlisted table from `config/nl_query.yml`. Column names and types come from PostgreSQL `information_schema.columns`, then **only exposed** columns are kept (`NlQuery::Exposure` — forbidden patterns and explicit denials such as `customers.internal_memo` are omitted entirely).
-- **Primary key** lines use `connection.primary_key` (exposed PK columns only). **Foreign key** hints use `connection.foreign_keys` when the referenced table is also allowlisted and both the referencing and referenced columns are exposed (so the model sees join paths such as `orders.customer_id → customers.id`).
-- **Tests:** `test/services/nl_query/schema_snapshot_test.rb` (redaction + PK/FK content).
-
-## NL→SQL via RubyLLM (Epic 2, Tickets 2.2–2.3)
-
-- **`NlQuery::TextToSqlClient`** is the only NL→SQL entry point in `app/`; it uses **`NlQuery::OllamaChatCompletion`**, which calls **RubyLLM** — **no ad-hoc HTTP client** to Ollama elsewhere under `app/`.
-- **Prompts** live in **`NlQuery::Prompts::TextToSql`** (`SYSTEM_PROMPT` and `user_message` for the `Schema:` / `Question:` shape). **Git** is the prompt version history; there is no prompts table in v1 (see plan Phase 2).
-- **Parsing:** model replies go through **`NlQuery::ModelReplyParser`** → **`NlQuery::TextToSqlResult`**. **Tests** inject a fake **`completion`** (`test/services/nl_query/text_to_sql_client_test.rb`, including **`RecordingCompletion`**) so CI never needs a running Ollama.
-
-## Ollama + RubyLLM (Ticket 0.2)
-
-- **Gem:** [`ruby_llm`](https://rubygems.org/gems/ruby_llm) — all LLM calls go through RubyLLM (no ad-hoc HTTP to Ollama in `app/`).
-- **Config:** `config/initializers/ruby_llm.rb` sets `ollama_api_base` from **`OLLAMA_BASE_URL`** (default `http://127.0.0.1:11434`; normalized to `…/v1` for RubyLLM’s OpenAI-compatible endpoint), **`OLLAMA_MODEL`** (default `qwen2.5-coder:7b`), optional **`OLLAMA_API_KEY`**, and optional **`RUBYLLM_REQUEST_TIMEOUT`** (seconds).
-- **Live smoke:** with Ollama running and the model pulled, `ollama list` should include `OLLAMA_MODEL`; then run a manual ask from `rails console` if you want to confirm end-to-end.
-
-## Mini-shop schema & seeds (Ticket 0.3)
-
-- **Tables:** `categories`, `products`, `customers` (includes nullable `internal_memo` for redaction demos), `orders`, `order_items` — see migration `db/migrate/*_create_mini_shop.rb` and `db/schema.rb`.
-- **Reproducible counts** after `bin/rails db:seed` (or `bin/rails db:reset`):
-  - **10** categories  
-  - **42** products (**2** never appear on any line item: **SEED-041**, **SEED-042**)  
-  - **24** customers (**4** have zero orders: emails `nosale01@seed.example.com` … `nosale04@seed.example.com`)  
-  - **75** orders (`placed_at` from **2024** through **2026**; **20** orders strictly after **2025-12-10** for date-range demos)  
-  - **225** order line items (1–5 lines per order; **SEED-007** appears on more than one order)  
-  - **Whale** customer `whale@seed.example.com`: **38** orders with slightly marked-up line prices for high `total_cents` totals.
-
-## Product policy & safe errors (Ticket 0.4)
-
-- **In-app:** **`/`** and **`GET /ask`** render the Ask form (`QuestionsController#ask`); **`POST /ask`** runs the NL pipeline (`QuestionsController#create`); **`/policy`** is the “what this can do” page (`StaticPagesController#policy`). The full ticket text is **`docs/ask-data-plan.md`** (section **Ticket 0.4**).
-- **Pipeline:** `NlQuery::NaturalLanguageQuery` runs **ambiguity hints** → `NlQuery::TextToSqlClient` (prompts require SELECT-only, no invented columns, clarify or omit SQL when needed) → **`NlQuery::SqlGuard`** + **`NlQuery::SqlSelectAllowlist`** (Epic **3** — parser gate and identifier allowlist; see below) → **`NlQuery::RunQuery.perform`** on success (timeouts, row cap, read-only execution).
-- **User-visible strings** live in `NlQuery::ProductPolicy::MESSAGES`; **`NlQuery::QueryResult#user_safe_payload`** omits SQL and internals for UI layers.
-
-## SQL guardrails — Epic 3 (Tickets 3.1–3.4)
-
-- **3.1 — `NlQuery::SqlGuard`:** **`pg_query`** ensures a single top-level **`SelectStmt`** (including `WITH … SELECT`); rejects DDL/DML, `EXPLAIN`, multi-statement strings, etc.; parse errors map to safe user copy.
-- **3.2 — `NlQuery::SqlSelectAllowlist`:** AST walk after the shape gate: **`RangeVar`** relations must be **`NlQuery::Exposure`** allowlisted (or a CTE name); schema absent, empty, or **`public`**; **`SELECT *` / `tbl.*`** denied; column refs checked per **`FROM`** alias map (CTEs/subqueries skip strict column checks).
-- **3.3 — Timeouts and row cap:** **`config/nl_query.yml`** → **`run_limits`**: `statement_timeout_ms`, `max_result_rows`, optional `execution_role`. **`NlQuery::RunLimits`** loads these; **`NlQuery::SqlRunLimits.ensure_max_rows`** rewrites SQL via pg_query (append or clamp outer `LIMIT`; non-constant limits rejected).
-- **3.4 — Read-only execution:** **`NlQuery::RunQuery.perform`** is the only execution path for NL-generated SQL: validate → enforce max rows → validate again → short transaction with **`SET TRANSACTION READ ONLY`** (skipped if unsupported, e.g. nested txn), **`SET LOCAL statement_timeout`**, optional **`SET LOCAL ROLE`** when `execution_role` is set, then **`exec_query`**.
-
-**Tests:** `test/services/nl_query/sql_guard_test.rb`, `sql_run_limits_test.rb`, `run_query_test.rb`.
-- **Suggested questions** for clarification UX: `NlQuery::ProductPolicy::SUGGESTED_QUESTIONS` (keep in sync with README / Epic 6 golden list when you add it).
-
-## Rails UI — Slim + Tailwind (Ticket 1.1)
-
-- **Templates:** [`slim-rails`](https://github.com/slim-template/slim-rails) is in the Gemfile. App layout and feature screens use **`.html.slim`** (`app/views/layouts/application.html.slim`, `questions/`, `static_pages/`). Mailer layouts remain **ERB** under `app/views/layouts/mailer*`; PWA stubs may stay **ERB** as generated.
-- **CSS:** [tailwindcss-rails](https://github.com/rails/tailwindcss-rails) — `app/assets/tailwind/application.css` imports Tailwind; use utility classes in Slim (`class="..."` / `.class` chains). Run `bin/dev` or `bin/rails tailwindcss:watch` in development so CSS rebuilds.
-
-## Ask UI + browse tables (Tickets 1.3–1.4)
-
-- **Ask:** `questions/ask` — textarea, **`POST /ask`** to run **`NlQuery::NaturalLanguageQuery`** with a live **`NlQuery::SchemaSnapshot.for_llm`** (see Epic 2 above), then **`NlQuery::RunQuery`** on success paths only. Suggested questions and chips read from **`NlQuery::ProductPolicy::SUGGESTED_QUESTIONS`** (single source of truth). Stimulus **`ask-form`** handles example chips and a disabled “Running…” submit state.
-- **Browse (read-only):** **`GET /customers`**, **`GET /products`**, **`GET /orders`** — simple index tables to sanity-check NL results against seed data (Ticket 1.4 scope folded in so verification links work).
-- **Nav:** layout partial `layouts/_nav` links Ask, browse routes, and policy.
-
-## No authentication by design (Ticket 1.2)
-
-- **Gemfile:** no `devise`, OAuth, JWT, or similar auth gems for the web app (`bcrypt` remains commented unless you add it for something else).
-- **Routes:** no `/login`, `/sessions`, or OAuth callbacks. **No tests** assert `401 Unauthorized` for the Ask or browse flows—that would be the wrong goal for v1.
-- **Reminder:** read the **Security warning** section at the top of this README before exposing the app to a network.
-
-## Ruby version
-
-See `.ruby-version`.
+| Variable | Purpose |
+|----------|---------|
+| `OLLAMA_BASE_URL` | Ollama HTTP base (default `http://127.0.0.1:11434`; normalized to include `/v1` for RubyLLM) |
+| `OLLAMA_MODEL` | Model id (default `qwen2.5-coder:14b` in code if unset) — run `ollama pull <name>` so it exists locally |
+| `RUBYLLM_REQUEST_TIMEOUT` | Optional; request timeout in seconds (default `300` in the initializer) |
 
 ## Setup
 
 ```bash
+git clone <repository-url>
+cd ask-data
 bundle install
+```
+
+Ensure PostgreSQL is up, then:
+
+```bash
 bin/rails db:create db:migrate db:seed
-# or recreate everything from migrations + seeds:
+# or reset DB + reseed from scratch:
 bin/rails db:reset
 ```
 
-(PostgreSQL must be running; database names come from `config/database.yml`.)
+For natural-language asks (not required for `bin/rails test`):
+
+1. Start Ollama (`ollama serve` if it is not already running).
+2. Pull the model you configured, e.g. `ollama pull qwen2.5-coder:14b` (or whatever you set in `OLLAMA_MODEL`).
+
+Run the app:
+
+```bash
+bin/dev
+```
+
+[`Procfile.dev`](Procfile.dev) starts the Rails server, Tailwind watch, and `ollama serve`. If Ollama is already running, you can use `bin/rails server` and, in another terminal, `bin/rails tailwindcss:watch` for CSS.
+
+Open the app in the browser (default port 3000). Root and **`/ask`** show the question form; **`/policy`** describes capabilities; **`/customers`**, **`/products`**, **`/orders`** list seed data.
+
+## Configuration
+
+Edit **`config/nl_query.yml`** to change which tables participate in NL queries, which columns are hidden from the model and from result rows, and execution caps (`statement_timeout_ms`, `max_result_rows`, optional `execution_role`). Restart the app after changes. Run **`bin/rails test`** afterward, especially `test/services/nl_query/`, when you change exposure rules.
 
 ## Tests
 
@@ -99,6 +60,45 @@ bin/rails db:reset
 bin/rails test
 ```
 
-## Manual QA
+Integration tests cover HTTP routes; NL pipeline tests use injected fakes so CI does not need Ollama.
 
-(To be expanded in Epic 5 — see plan.)
+## Security
+
+This app **does not ship with authentication**. It is aimed at local development and trusted networks.
+
+Anyone who can open the UI can run the NL→SQL flow against your Postgres and Ollama. SQL is constrained to **SELECT-only** execution with allowlists and limits (see **Architecture**), but that does **not** stop abuse, cost, or unauthorized use. **Do not expose it to the public internet** without auth, rate limiting, and hardening—or keep access private (VPN, SSH tunnel, etc.).
+
+## Architecture
+
+High-level flow:
+
+```mermaid
+flowchart LR
+  subgraph web [Rails web]
+    UI[Ask form + browse pages]
+  end
+  subgraph nl [NL pipeline lib/nl_query]
+    ORCH[Orchestration]
+    LLM[RubyLLM to Ollama]
+    GUARD[SQL guard and allowlist]
+    RUN[Read-only execution]
+  end
+  DB[(PostgreSQL)]
+  OLL[Ollama]
+
+  UI --> ORCH
+  ORCH --> LLM
+  LLM --> OLL
+  ORCH --> GUARD
+  GUARD --> RUN
+  RUN --> DB
+```
+
+| Layer | Role |
+|--------|------|
+| **Web** | Slim + Tailwind + Stimulus. `QuestionsController` runs the ask flow; `StaticPagesController` serves policy copy; browse controllers expose read-only index tables for sanity checks. |
+| **NL pipeline** | Lives under **`lib/nl_query/`** (not `app/services`). Builds a schema snapshot from config + DB metadata, calls the model for SQL, validates with **pg_query** (single `SELECT` / `WITH`, allowlisted relations and columns), then runs the query in a short **read-only** transaction with statement timeout and row cap. |
+| **Configuration** | **`config/nl_query.yml`** — which tables/columns are visible to the model and returned to the UI, plus execution limits. **`config/initializers/ruby_llm.rb`** wires RubyLLM to Ollama using env vars below. |
+| **Demo data** | Migrations and **`db/seeds`** define a small “mini shop” schema used for development and tests. |
+
+User-facing errors avoid leaking raw SQL or internal details; successful paths redact columns blocked by policy.

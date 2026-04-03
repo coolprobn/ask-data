@@ -1,6 +1,6 @@
 # Natural-language query exposure: allowed tables and columns the LLM may use.
 # Forbidden columns must never appear in schema text shown to the model or in query results.
-# See README "NL query exposure" and NlQuery::Exposure.
+# See README "Configuration" and NlQuery::Exposure.
 
 default: &default
   allowed_tables:

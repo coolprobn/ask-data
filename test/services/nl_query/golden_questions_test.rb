@@ -154,7 +154,7 @@ module NlQuery
         unit_price_cents: novel.price_cents
       )
 
-      [o1, o2, o3].each do |order|
+      [ o1, o2, o3 ].each do |order|
         total = order.order_items.sum { |li| li.quantity * li.unit_price_cents }
         order.update!(total_cents: total)
       end

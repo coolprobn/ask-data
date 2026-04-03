@@ -201,7 +201,7 @@ If the model never *sees* a sensitive column and the UI never *renders* it, you 
 
    Rails loads this via `Rails.application.config_for(:nl_query)` with the usual `default` / per-environment YAML merge, so changing exposure is a config edit plus deploy (or restart in dev).
 
-2. **`NlQuery::Exposure`** (`app/services/nl_query/exposure.rb`)  
+2. **`NlQuery::Exposure`** (`lib/nl_query/exposure.rb`)  
    One module answers: “Is this table in scope?” and “Is this column safe to expose?” It exposes helpers for:
    - **LLM-facing text:** `filter_columns_for_llm`, `llm_schema_lines_for_table` — forbidden columns are **omitted**, not redacted in place, so the model’s world matches your policy.  
    - **Result rows:** `redact_result_row` — drops keys that fail the same checks (for when execution returns a hash-like row keyed by column name).

@@ -2,8 +2,8 @@
 
 require "ruby_llm"
 # Initializers run before Zeitwerk autoloads `app/`; load NL query env helpers explicitly.
-require Rails.root.join("app/services/nl_query/error.rb")
-require Rails.root.join("app/services/nl_query/ollama_env.rb")
+require Rails.root.join("lib/nl_query/error.rb")
+require Rails.root.join("lib/nl_query/ollama_env.rb")
 
 RubyLLM.configure do |config|
   config.ollama_api_base = NlQuery::OllamaEnv.api_base_url
