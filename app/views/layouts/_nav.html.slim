@@ -1,0 +1,7 @@
+nav.border-b.border-gray-200.bg-white
+  .container.mx-auto.flex.flex-wrap.items-center.gap-x-6.gap-y-2.px-5.py-3.text-sm
+    = link_to "Ask Data", root_path, class: nav_link_classes(nav_active?(:ask))
+    = link_to "Customers", customers_path, class: nav_link_classes(nav_active?(:customers))
+    = link_to "Products", products_path, class: nav_link_classes(nav_active?(:products))
+    = link_to "Orders", orders_path, class: nav_link_classes(nav_active?(:orders))
+    = link_to "Policy", policy_path, class: nav_link_classes(nav_active?(:policy))

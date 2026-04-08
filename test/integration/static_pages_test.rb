@@ -1,0 +1,11 @@
+# frozen_string_literal: true
+
+require "test_helper"
+
+class StaticPagesTest < ActionDispatch::IntegrationTest
+  test "policy renders" do
+    get policy_path
+    assert_response :success
+    assert_match(/What Ask Data can do/i, @response.body)
+  end
+end

@@ -1,0 +1,10 @@
+---
+description: Prefer request/integration tests; do not add Rails controller tests
+alwaysApply: true
+---
+
+# Testing: no `ActionController::TestCase` / controller tests
+
+- Do **not** add tests under `test/controllers/` or subclass `ActionController::TestCase` for this app.
+- Prefer **`ActionDispatch::IntegrationTest`** under `test/integration/` (or feature tests) for HTTP routes, status codes, and response bodies.
+- Keep unit tests for services/models under `test/services/` and `test/models/` as today.

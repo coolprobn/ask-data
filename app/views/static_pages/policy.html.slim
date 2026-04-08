@@ -1,0 +1,10 @@
+- content_for :title, "What Ask Data can do — Ask Data"
+
+.max-w-3xl
+  h1.text-2xl.font-semibold.mb-4 What Ask Data can do
+
+  p.mb-4.text-gray-700
+    == raw("Ask Data turns plain English into <strong>read-only</strong> PostgreSQL <code>SELECT</code> queries over <strong>allowlisted</strong> tables and columns. It can handle filters, joins, aggregates, grouping, and sorting when your question maps to the data we expose. Answers depend on what is in the database, what appears in the schema snapshot we give the model, and how the model responds—we do not guarantee every phrasing of every question.")
+
+  p.mb-4.text-gray-700
+    == raw("If a question is too vague, we may ask you to clarify or suggest example questions. If something is unsafe or not a single read-only query, you’ll see a short message without raw SQL or internal errors. Questions about data we don’t store (or don’t expose) get a plain “can’t answer from available data” style response.")
