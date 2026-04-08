@@ -32,8 +32,10 @@ module NlQuery
 
         conn.execute("SET LOCAL statement_timeout = #{ms.to_i}")
 
-        role_fragment = RunLimits.safe_execution_role_sql
-        conn.execute("SET LOCAL ROLE #{role_fragment}") if role_fragment
+        r = RunLimits.validated_execution_role
+        if r
+          conn.execute("SET LOCAL ROLE #{ActiveRecord::Base.connection.quote_column_name(r)}")
+        end
 
         result = conn.exec_query(limited_sql)
       end

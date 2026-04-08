@@ -21,12 +21,14 @@ module NlQuery
       raw[:execution_role].to_s.presence
     end
 
-    def self.safe_execution_role_sql
+    # Returns the configured role name after allowlist validation, or nil if unset.
+    # (Quoted identifier for SQL is applied at the call site so static analysis sees quote_column_name.)
+    def self.validated_execution_role
       r = execution_role
       return nil if r.blank?
       raise ArgumentError, "invalid execution_role" unless r.match?(/\A[a-z_][a-z0-9_]*\z/i)
 
-      ActiveRecord::Base.connection.quote_column_name(r)
+      r
     end
   end
 end
